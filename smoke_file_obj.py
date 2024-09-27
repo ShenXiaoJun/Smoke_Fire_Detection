@@ -17,7 +17,7 @@ class Smoke_File_Detector():
         parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
         parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
         parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
-        parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+        parser.add_argument('--device', default='cpu', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
         parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --class 0, or --class 0 2 3')
         parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
         parser.add_argument('--augment', action='store_true', help='augmented inference')
@@ -66,7 +66,8 @@ class Smoke_File_Detector():
             if det is not None and len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(batch_img.shape[2:], det[:, :4], im0.shape).round()                
-                det = det.cuda().data.cpu().numpy()
+                #det = det.cuda().data.cpu().numpy()
+                det = det.cpu().numpy() #shenxj use cpu
                 for *xyxy, conf, cls in det:
                     w = xyxy[2]-xyxy[0]
                     h = xyxy[3]-xyxy[1]
@@ -127,7 +128,32 @@ class Smoke_File_Detector():
 
 if __name__ == "__main__":
     import cv2
-    img = cv2.imread('../yolov5/dataset/smoke_file/2.jpg')
+    img = cv2.imread('../doc/demo.jpg')
 
     det = Smoke_File_Detector()
     print(det.detect_test([img]))
+    for detection in det.detect_test([img])[0]:
+        #x1, y1, x2, y2, conf, class_id = detection[:6]  # 获取边界框、置信度、类别ID
+        #label = model.names[int(class_id)]  # 获取类别名称
+        #confidence = conf.item()  # 将 tensor 转换为普通数值
+
+        #shenxj+++
+        bbox = detection['bbox']
+        label = detection['label']
+        conf = detection['conf']
+        x1 = bbox[0]
+        y1 = bbox[1]
+        x2 = bbox[2]
+        y2 = bbox[3]
+        #shenxj---
+
+        # 绘制边界框
+        cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+
+        # 在图像上写类别标签和置信度
+        text = f'{label} {conf:.2f}'
+        cv2.putText(img, text, (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+    # 6. 保存合并后的图像
+    output_path = '/var/www/html/yolov5/output_image.jpg'  # 保存路径
+    cv2.imwrite(output_path, img)
